@@ -148,6 +148,35 @@ export const dbService = {
   },
 
   /**
+   * Clear an entire collection (both locally and on Firestore)
+   */
+  async clearCollection(collectionName) {
+    saveLocal(collectionName, []);
+    if (this.isCloudConnected()) {
+      try {
+        const colRef = collection(db, collectionName);
+        const snapshot = await getDocs(colRef);
+        const deletePromises = snapshot.docs.map(docSnap => deleteDoc(doc(db, collectionName, docSnap.id)));
+        await Promise.all(deletePromises);
+        console.log(`Cleared all cloud entries in ${collectionName}`);
+      } catch (err) {
+        console.error(`Error clearing collection ${collectionName}:`, err);
+      }
+    }
+  },
+
+  /**
+   * Wipe all dummy audit logs and sample donations
+   */
+  async clearAllTestData() {
+    await this.clearCollection('donations');
+    await this.clearCollection('audit_logs');
+    await this.clearCollection('expenses');
+    await this.clearCollection('employees');
+    await this.clearCollection('volunteers');
+  },
+
+  /**
    * Log an administrative or financial action into the audit trail
    */
   async logActivity(action, category, details, userRole = 'superadmin') {

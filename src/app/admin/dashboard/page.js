@@ -12,13 +12,7 @@ import DonorProfile from '../../../components/admin/DonorProfile';
 import { dbService } from '../../../lib/dbService';
 
 /* ─── seed data ─── */
-const initialDonations = [
-  { id: 1, name: "Suresh Mandavi",  email: "suresh@email.com",  amount: 2500,  type: "Monthly",  date: "24 Aug 2026", month: "Aug 2026", status: "Active" },
-  { id: 2, name: "Rohit Deshmukh",  email: "rohit@email.com",   amount: 5000,  type: "One-time", date: "22 Aug 2026", month: "Aug 2026", status: "Completed" },
-  { id: 3, name: "Ananya Sen",      email: "ananya@email.com",  amount: 1500,  type: "Monthly",  date: "20 Jul 2026", month: "Jul 2026", status: "Active" },
-  { id: 4, name: "Kunal Kapoor",    email: "kunal@email.com",   amount: 10000, type: "One-time", date: "15 Jul 2026", month: "Jul 2026", status: "Completed" },
-  { id: 5, name: "Priya Sharma",    email: "priya@email.com",   amount: 3000,  type: "Monthly",  date: "10 Jun 2026", month: "Jun 2026", status: "Active" },
-];
+const initialDonations = [];
 const initialTestimonials = [
   { id: 1, name: "Rohan Verma",      role: "Education Drive Beneficiary",  quote: "Thanks to JPRD Foundation, I received a learning scholarship.", avatar: "RV" },
   { id: 2, name: "Dr. Shalini Mehta",role: "Voluntary General Physician",  quote: "Volunteering at JPRD's health camps has been incredibly fulfilling.", avatar: "SM" },
@@ -30,10 +24,7 @@ const initialCarousel = [
   { id: 3, url: "/images/carousel-3.jpg", caption: "Skills and Opportunities" },
   { id: 4, url: "/images/carousel-4.jpg", caption: "Community Togetherness" },
 ];
-const initialVolunteers = [
-  { id: 1, name: "Amit Patel",  email: "amit@email.com",  phone: "+91 9876543210", interest: "Education & Teaching", date: "24 Aug 2026", month: "Aug 2026" },
-  { id: 2, name: "Sneha Reddy", email: "sneha@email.com", phone: "+91 8765432109", interest: "Health Campaigns",    date: "23 Jul 2026", month: "Jul 2026" },
-];
+const initialVolunteers = [];
 const initialEvents = [
   { id: 1, date: "24 Oct 2026", title: "Annual Education Drive",    location: "Bhaisakharag, Mau", desc: "Distribution of study materials to 500+ students." },
   { id: 2, date: "10 Nov 2026", title: "Women Empowerment Seminar", location: "Community Hall",    desc: "Workshop on digital literacy and financial independence." },
@@ -44,14 +35,8 @@ const initialGallery = [
   { id: 2, url: "/images/gallery-2.jpg", caption: "Women Workshop" },
   { id: 3, url: "/images/gallery-3.jpg", caption: "Health Drive" },
 ];
-const initialEmployees = [
-  { id: 1, name: "Harindra Kumar", role: "Field Coordinator", baseSalary: 15000, date: "01 Jul 2026", month: "Jul 2026" },
-  { id: 2, name: "Usha Devi",      role: "Health Worker",     baseSalary: 12000, date: "15 Jul 2026", month: "Jul 2026" },
-];
-const initialExpenses = [
-  { id: 1, date: "10 Aug 2026", month: "Aug 2026", category: "Operations", desc: "Office Rent & Utilities", amount: 5000 },
-  { id: 2, date: "12 Aug 2026", month: "Aug 2026", category: "Marketing",  desc: "Flyers for Health Camp",  amount: 2500 },
-];
+const initialEmployees = [];
+const initialExpenses = [];
 
 const DONATION_GOAL = 500000;
 const MONTHS = ["All Months","Jan 2026","Feb 2026","Mar 2026","Apr 2026","May 2026","Jun 2026","Jul 2026","Aug 2026","Sep 2026","Oct 2026","Nov 2026","Dec 2026"];
