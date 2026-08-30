@@ -5,10 +5,11 @@ import {
   Users, Heart, Image as ImageIcon, LogOut,
   Trash2, Plus, Sparkles, Filter, CheckCircle,
   BarChart3, Calendar, TrendingUp, ArrowUpRight,
-  Target, Activity, UserPlus, Eye, Wallet, Download
+  Target, Activity, UserPlus, Eye, Wallet, Download, Cloud, CloudOff, ShieldCheck, FileText, Printer
 } from 'lucide-react';
 import styles from '../admin.module.css';
 import DonorProfile from '../../../components/admin/DonorProfile';
+import { dbService } from '../../../lib/dbService';
 
 /* ─── seed data ─── */
 const initialDonations = [
@@ -69,28 +70,331 @@ function downloadCSV(data, filename, columns) {
     return;
   }
   const keys = columns || Object.keys(data[0]);
+  const headerLabels = keys.map(k => k.charAt(0).toUpperCase() + k.slice(1).replace(/([A-Z])/g, ' $1'));
+  
   const csvContent = [
-    keys.join(','), // Header row
+    headerLabels.join(','), // Formatted Header row
     ...data.map(row => 
       keys.map(k => {
         let cell = row[k] === null || row[k] === undefined ? '' : row[k].toString();
-        // Escape quotes and wrap in quotes if contains comma
+        // Escape quotes and wrap in quotes if contains comma or newline
         cell = cell.replace(/"/g, '""');
-        if (cell.search(/("|,|\n)/g) >= 0) cell = `"${cell}"`;
+        if (cell.search(/("|,|\n|\r)/g) >= 0) cell = `"${cell}"`;
         return cell;
       }).join(',')
     )
-  ].join('\n');
+  ].join('\r\n');
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", filename);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const finalName = filename.toLowerCase().endsWith('.csv') ? filename : `${filename}.csv`;
+  const bomCsv = "\uFEFF" + csvContent;
+
+  try {
+    const blob = new Blob([bomCsv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = finalName;
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 200);
+  } catch (err) {
+    // Fallback data URI
+    const encodedUri = encodeURI("data:text/csv;charset=utf-8,\uFEFF" + csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", finalName);
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+    }, 200);
+  }
+}
+
+/**
+ * Generate a high-resolution printable / PDF downloadable report with official JPRD Foundation letterhead.
+ */
+function generatePrintableReport(title, subtitle, columns, data, summaryMetrics = []) {
+  if (!data || !data.length) {
+    alert("No data available to generate report.");
+    return;
+  }
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert("Please allow popups to view and print the report.");
+    return;
+  }
+
+  const now = new Date();
+  const dateFormatted = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeFormatted = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>${title} — JPRD Foundation Official Report</title>
+        <meta charset="utf-8" />
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            color: #1e293b;
+            background: #fff;
+            padding: 40px;
+            font-size: 13px;
+            line-height: 1.5;
+          }
+          .report-container {
+            max-width: 960px;
+            margin: 0 auto;
+          }
+          .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #1F5B35;
+            padding-bottom: 20px;
+            margin-bottom: 25px;
+          }
+          .logo-area {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+          }
+          .logo-area img {
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid #1F5B35;
+          }
+          .org-title {
+            font-size: 22px;
+            font-weight: 800;
+            color: #1F5B35;
+            letter-spacing: -0.5px;
+          }
+          .org-sub {
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          .report-meta {
+            text-align: right;
+            font-size: 12px;
+            color: #64748b;
+          }
+          .report-meta strong {
+            color: #0f172a;
+          }
+          .doc-title {
+            font-size: 18px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 4px;
+          }
+          .doc-sub {
+            font-size: 13px;
+            color: #64748b;
+            margin-bottom: 20px;
+          }
+          .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+          }
+          .metric-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 14px 18px;
+            border-radius: 10px;
+          }
+          .metric-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+          }
+          .metric-val {
+            font-size: 20px;
+            font-weight: 800;
+            color: #1F5B35;
+            margin-top: 4px;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            margin-bottom: 30px;
+          }
+          th {
+            background: #1F5B35;
+            color: #ffffff;
+            font-weight: 700;
+            text-align: left;
+            padding: 10px 14px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+          td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 12.5px;
+          }
+          tr:nth-child(even) td {
+            background: #f8fafc;
+          }
+          .amount-cell {
+            font-weight: 700;
+            color: #1F5B35;
+          }
+          .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            background: #e2fbe8;
+            color: #15803d;
+          }
+          .report-footer {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #94a3b8;
+          }
+          .actions-bar {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            gap: 12px;
+            background: #0f172a;
+            padding: 12px 20px;
+            border-radius: 40px;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.35);
+            z-index: 9999;
+          }
+          .action-btn-pdf {
+            background: #10b981;
+            color: #ffffff;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 25px;
+            font-weight: 800;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+          }
+          .action-btn-pdf:hover {
+            background: #059669;
+            transform: translateY(-2px);
+          }
+          .action-btn-close {
+            background: #334155;
+            color: #ffffff;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 25px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+          }
+          .action-btn-close:hover {
+            background: #475569;
+          }
+          @media print {
+            body { padding: 0; }
+            .actions-bar { display: none; }
+            .top-banner-actions { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="report-container">
+          <div class="report-header">
+            <div class="logo-area">
+              <img src="/logo.png" alt="JPRD" onerror="this.style.display='none'" />
+              <div>
+                <div class="org-title">JPRD Foundation</div>
+                <div class="org-sub">Creating Opportunities. Building Stronger Communities.</div>
+              </div>
+            </div>
+            <div class="report-meta">
+              <div>Generated on: <strong>${dateFormatted}, ${timeFormatted}</strong></div>
+              <div>System: <strong>JPRD Admin Audit & Compliance</strong></div>
+            </div>
+          </div>
+
+          <div class="doc-title">${title}</div>
+          <div class="doc-sub">${subtitle}</div>
+
+          ${summaryMetrics && summaryMetrics.length > 0 ? `
+            <div class="metrics-grid">
+              ${summaryMetrics.map(m => `
+                <div class="metric-box">
+                  <div class="metric-label">${m.label}</div>
+                  <div class="metric-val">${m.value}</div>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          <table>
+            <thead>
+              <tr>
+                ${columns.map(col => `<th>${col.label || col.key}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${data.map(row => `
+                <tr>
+                  ${columns.map(col => {
+                    let val = row[col.key] !== undefined && row[col.key] !== null ? row[col.key] : '';
+                    if (col.isAmount) val = `₹${Number(val).toLocaleString()}`;
+                    return `<td>${val}</td>`;
+                  }).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div class="report-footer">
+            <div>Confidential & Official Document of JPRD Foundation</div>
+            <div>Total Records: ${data.length}</div>
+          </div>
+        </div>
+
+        <div class="actions-bar">
+          <button class="action-btn-pdf" onclick="window.print()">🖨️ Print / Save as PDF</button>
+          <button class="action-btn-close" onclick="window.close()">✕ Close</button>
+        </div>
+      </body>
+    </html>
+  `;
+
+  printWindow.document.open();
+  printWindow.document.write(html);
+  printWindow.document.close();
 }
 
 /**
@@ -127,6 +431,8 @@ export default function AdminDashboard() {
   const [gallery,      setGallery]      = useState([]);
   const [employees,    setEmployees]    = useState([]);
   const [expenses,     setExpenses]     = useState([]);
+  const [auditLogs,    setAuditLogs]    = useState([]);
+  const [auditCategoryFilter, setAuditCategoryFilter] = useState('All');
 
   /* ── Filter state ── */
   const [analyticsMonth,     setAnalyticsMonth]     = useState('All Months');
@@ -140,6 +446,7 @@ export default function AdminDashboard() {
   const [newDonorEmail,  setNewDonorEmail]  = useState('');
   const [newDonorAmount, setNewDonorAmount] = useState('');
   const [newDonorType,   setNewDonorType]   = useState('Monthly');
+  const [newDonorDate,   setNewDonorDate]   = useState(''); // Custom transaction date
 
   /* ── Form: testimonials ── */
   const [newTestName,  setNewTestName]  = useState('');
@@ -173,6 +480,8 @@ export default function AdminDashboard() {
   const [newExpCat,      setNewExpCat]      = useState('Operations');
   const [newExpDesc,     setNewExpDesc]     = useState('');
   const [newExpAmt,      setNewExpAmt]      = useState('');
+  const [newExpDate,     setNewExpDate]     = useState(''); // Custom expense date
+  const [salaryMonth,    setSalaryMonth]    = useState('Aug 2026'); // Month to disburse salary for
 
   /* ══ ALL useMemo BEFORE any early return ══ */
   const filteredDonations = useMemo(() =>
@@ -209,12 +518,12 @@ export default function AdminDashboard() {
       financeMonth === 'All Months' || getMonth(ex) === financeMonth
     ), [expenses, financeMonth]);
 
-  const totalExpenses = expenses.reduce((a, ex) => a + ex.amount, 0);
-  const totalSalaries = expenses.filter(ex => ex.category === 'Salary').reduce((a, ex) => a + ex.amount, 0);
+  const totalExpenses = expenses.reduce((a, ex) => a + (Number(ex.amount) || 0), 0);
+  const totalSalaries = expenses.filter(ex => ex.category === 'Salary').reduce((a, ex) => a + (Number(ex.amount) || 0), 0);
   const totalOtherExpenses = totalExpenses - totalSalaries;
   const remainingFunds = totalFunds - totalExpenses;
 
-  /* ── Load data ── */
+  /* ── Load data via dbService (Cloud Firestore + LocalStorage fallback) ── */
   useEffect(() => {
     const session = localStorage.getItem('adminSession');
     if (session !== 'true') { router.push('/admin'); return; }
@@ -227,147 +536,196 @@ export default function AdminDashboard() {
     else if (role === 'staff') setActiveTab('volunteers');
     else setActiveTab('analytics');
 
-    const rawD = load('jprd_donations');
-    const d = rawD ? normalizeDates(rawD) : normalizeDates(initialDonations);
-    setDonations(d);
-    if (!rawD) save('jprd_donations', d);
-    else save('jprd_donations', d); // resave with month backfill
+    // Subscribe to real-time collections
+    const unSubDonations = dbService.subscribe('donations', initialDonations, (data) => {
+      setDonations(normalizeDates(data));
+    });
 
-    const t = load('jprd_testimonials');
-    setTestimonials(t || initialTestimonials);
-    if (!t) save('jprd_testimonials', initialTestimonials);
+    const unSubTestimonials = dbService.subscribe('testimonials', initialTestimonials, (data) => {
+      setTestimonials(data);
+    });
 
-    const c = load('jprd_carousel');
-    setCarousel(c || initialCarousel);
-    if (!c) save('jprd_carousel', initialCarousel);
+    const unSubCarousel = dbService.subscribe('carousel', initialCarousel, (data) => {
+      setCarousel(data);
+    });
 
-    const rawV = load('jprd_volunteers');
-    const v = rawV ? normalizeDates(rawV) : normalizeDates(initialVolunteers);
-    setVolunteers(v);
-    if (!rawV) save('jprd_volunteers', v);
-    else save('jprd_volunteers', v);
+    const unSubVolunteers = dbService.subscribe('volunteers', initialVolunteers, (data) => {
+      setVolunteers(normalizeDates(data));
+    });
 
-    const e = load('jprd_events');
-    setEvents(e || initialEvents);
-    if (!e) save('jprd_events', initialEvents);
+    const unSubEvents = dbService.subscribe('events', initialEvents, (data) => {
+      setEvents(data);
+    });
 
-    const g = load('jprd_gallery');
-    setGallery(g || initialGallery);
-    if (!g) save('jprd_gallery', initialGallery);
+    const unSubGallery = dbService.subscribe('gallery', initialGallery, (data) => {
+      setGallery(data);
+    });
 
-    const emp = load('jprd_employees');
-    setEmployees(emp || initialEmployees);
-    if (!emp) save('jprd_employees', initialEmployees);
+    const unSubEmployees = dbService.subscribe('employees', initialEmployees, (data) => {
+      setEmployees(data);
+    });
 
-    const rawExp = load('jprd_expenses');
-    const exp = rawExp ? normalizeDates(rawExp) : normalizeDates(initialExpenses);
-    setExpenses(exp);
-    if (!rawExp) save('jprd_expenses', exp);
-    else save('jprd_expenses', exp);
+    const unSubExpenses = dbService.subscribe('expenses', initialExpenses, (data) => {
+      setExpenses(normalizeDates(data));
+    });
+
+    const unSubAuditLogs = dbService.subscribe('audit_logs', [], (data) => {
+      // Sort newest first
+      const sorted = [...data].sort((a, b) => new Date(b.timestamp || b.id) - new Date(a.timestamp || a.id));
+      setAuditLogs(sorted);
+    });
+
+    return () => {
+      unSubDonations();
+      unSubTestimonials();
+      unSubCarousel();
+      unSubVolunteers();
+      unSubEvents();
+      unSubGallery();
+      unSubEmployees();
+      unSubExpenses();
+      unSubAuditLogs();
+    };
   }, [router]);
 
   /* ── Handlers ── */
   const handleLogout = () => { localStorage.removeItem('adminSession'); router.push('/'); };
 
-  const handleAddDonor = (e) => {
+  const handleAddDonor = async (e) => {
     e.preventDefault();
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    const mon = `${today.toLocaleString('en-GB', { month: 'short' })} ${today.getFullYear()}`;
+    const chosenDate = newDonorDate ? new Date(newDonorDate) : new Date();
+    const dateStr = chosenDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const mon = `${chosenDate.toLocaleString('en-GB', { month: 'short' })} ${chosenDate.getFullYear()}`;
     const n = { id: Date.now(), name: newDonorName, email: newDonorEmail, amount: parseFloat(newDonorAmount), type: newDonorType, date: dateStr, month: mon, status: newDonorType === 'Monthly' ? 'Active' : 'Completed' };
-    const u = [n, ...donations]; setDonations(u); save('jprd_donations', u);
-    setNewDonorName(''); setNewDonorEmail(''); setNewDonorAmount('');
+    await dbService.saveItem('donations', n);
+    await dbService.logActivity('CREATE', 'Donations', `Registered donation of ₹${n.amount.toLocaleString()} from ${n.name} (${n.type}) for ${dateStr}`, adminRole);
+    setNewDonorName(''); setNewDonorEmail(''); setNewDonorAmount(''); setNewDonorDate('');
   };
-  const deleteDonor = (id) => { const u = donations.filter(d => d.id !== id); setDonations(u); save('jprd_donations', u); };
+  const deleteDonor = async (id) => { 
+    const donor = donations.find(d => String(d.id) === String(id));
+    await dbService.deleteItem('donations', id);
+    await dbService.logActivity('DELETE', 'Donations', `Deleted donor record: ${donor?.name || id}`, adminRole);
+  };
 
-  const handleAddTest = (e) => {
+  const handleAddTest = async (e) => {
     e.preventDefault();
     const initials = newTestName.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2);
     const n = { id: Date.now(), name: newTestName, role: newTestRole, quote: newTestQuote, avatar: initials };
-    const u = [n, ...testimonials]; setTestimonials(u); save('jprd_testimonials', u);
+    await dbService.saveItem('testimonials', n);
+    await dbService.logActivity('CREATE', 'Testimonials', `Added testimonial for ${n.name} (${n.role})`, adminRole);
     setNewTestName(''); setNewTestRole(''); setNewTestQuote('');
   };
-  const deleteTest = (id) => { const u = testimonials.filter(t => t.id !== id); setTestimonials(u); save('jprd_testimonials', u); };
+  const deleteTest = async (id) => { 
+    await dbService.deleteItem('testimonials', id);
+    await dbService.logActivity('DELETE', 'Testimonials', `Removed testimonial ID #${id}`, adminRole);
+  };
 
-  const handleAddCarousel = (e) => {
+  const handleAddCarousel = async (e) => {
     e.preventDefault();
     const n = { id: Date.now(), url: newCarouselUrl, caption: newCarouselCaption };
-    const u = [...carousel, n]; setCarousel(u); save('jprd_carousel', u);
+    await dbService.saveItem('carousel', n);
+    await dbService.logActivity('CREATE', 'Carousel', `Added slide: "${n.caption}"`, adminRole);
     setNewCarouselUrl(''); setNewCarouselCaption('');
   };
-  const deleteCarousel = (id) => { const u = carousel.filter(c => c.id !== id); setCarousel(u); save('jprd_carousel', u); };
+  const deleteCarousel = async (id) => { 
+    await dbService.deleteItem('carousel', id);
+    await dbService.logActivity('DELETE', 'Carousel', `Deleted carousel slide ID #${id}`, adminRole);
+  };
 
-  const handleAddEvent = (e) => {
+  const handleAddEvent = async (e) => {
     e.preventDefault();
     const n = { id: Date.now(), title: newEventTitle, date: newEventDate, location: newEventLocation, desc: newEventDesc };
-    const u = [...events, n]; setEvents(u); save('jprd_events', u);
+    await dbService.saveItem('events', n);
+    await dbService.logActivity('CREATE', 'Events', `Scheduled community event: "${n.title}" (${n.date})`, adminRole);
     setNewEventTitle(''); setNewEventDate(''); setNewEventLocation(''); setNewEventDesc('');
   };
-  const deleteEvent = (id) => { const u = events.filter(ev => ev.id !== id); setEvents(u); save('jprd_events', u); };
+  const deleteEvent = async (id) => { 
+    await dbService.deleteItem('events', id);
+    await dbService.logActivity('DELETE', 'Events', `Cancelled event ID #${id}`, adminRole);
+  };
 
-  const handleAddGallery = (e) => {
+  const handleAddGallery = async (e) => {
     e.preventDefault();
     const n = { id: Date.now(), url: newGalleryUrl, caption: newGalleryCaption };
-    const u = [...gallery, n]; setGallery(u); save('jprd_gallery', u);
+    await dbService.saveItem('gallery', n);
+    await dbService.logActivity('CREATE', 'Gallery', `Uploaded gallery photo: "${n.caption}"`, adminRole);
     setNewGalleryUrl(''); setNewGalleryCaption('');
   };
-  const deleteGallery = (id) => { const u = gallery.filter(g => g.id !== id); setGallery(u); save('jprd_gallery', u); };
+  const deleteGallery = async (id) => { 
+    await dbService.deleteItem('gallery', id);
+    await dbService.logActivity('DELETE', 'Gallery', `Removed gallery photo ID #${id}`, adminRole);
+  };
 
-  const handleAddVolunteer = (e) => {
+  const handleAddVolunteer = async (e) => {
     e.preventDefault();
     const today = new Date();
     const dateStr = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     const mon = `${today.toLocaleString('en-GB', { month: 'short' })} ${today.getFullYear()}`;
     const n = { id: Date.now(), name: newVolName, email: newVolEmail, phone: newVolPhone, interest: newVolInterest, date: dateStr, month: mon };
-    const u = [n, ...volunteers]; setVolunteers(u); save('jprd_volunteers', u);
+    await dbService.saveItem('volunteers', n);
+    await dbService.logActivity('CREATE', 'Volunteers', `Registered volunteer: ${n.name} (${n.interest})`, adminRole);
     setNewVolName(''); setNewVolEmail(''); setNewVolPhone('');
   };
-  const deleteVolunteer = (id) => { const u = volunteers.filter(v => v.id !== id); setVolunteers(u); save('jprd_volunteers', u); };
+  const deleteVolunteer = async (id) => { 
+    await dbService.deleteItem('volunteers', id);
+    await dbService.logActivity('DELETE', 'Volunteers', `Removed volunteer record ID #${id}`, adminRole);
+  };
 
   /* ── FINANCE ── */
-  const handleAddEmployee = (e) => {
+  const handleAddEmployee = async (e) => {
     e.preventDefault();
     const today = new Date();
     const dateStr = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     const mon = `${today.toLocaleString('en-GB', { month: 'short' })} ${today.getFullYear()}`;
     const n = { id: Date.now(), name: newEmpName, role: newEmpRole, baseSalary: parseFloat(newEmpSalary), date: dateStr, month: mon };
-    const u = [n, ...employees]; setEmployees(u); save('jprd_employees', u);
+    await dbService.saveItem('employees', n);
+    await dbService.logActivity('CREATE', 'Finance', `Onboarded employee ${n.name} (${n.role}) with base salary ₹${n.baseSalary.toLocaleString()}`, adminRole);
     setNewEmpName(''); setNewEmpRole(''); setNewEmpSalary('');
   };
-  const deleteEmployee = (id) => { const u = employees.filter(emp => emp.id !== id); setEmployees(u); save('jprd_employees', u); };
-
-  const handleAddExpense = (e) => {
-    e.preventDefault();
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    const mon = `${today.toLocaleString('en-GB', { month: 'short' })} ${today.getFullYear()}`;
-    const n = { id: Date.now(), date: dateStr, month: mon, category: newExpCat, desc: newExpDesc, amount: parseFloat(newExpAmt) };
-    const u = [n, ...expenses]; setExpenses(u); save('jprd_expenses', u);
-    setNewExpCat('Operations'); setNewExpDesc(''); setNewExpAmt('');
+  const deleteEmployee = async (id) => { 
+    const emp = employees.find(e => String(e.id) === String(id));
+    await dbService.deleteItem('employees', id);
+    await dbService.logActivity('DELETE', 'Finance', `Removed staff member: ${emp?.name || id}`, adminRole);
   };
-  const deleteExpense = (id) => { const u = expenses.filter(ex => ex.id !== id); setExpenses(u); save('jprd_expenses', u); };
 
-  const handlePaySalary = (emp) => {
+  const handleAddExpense = async (e) => {
+    e.preventDefault();
+    const chosenDate = newExpDate ? new Date(newExpDate) : new Date();
+    const dateStr = chosenDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const mon = `${chosenDate.toLocaleString('en-GB', { month: 'short' })} ${chosenDate.getFullYear()}`;
+    const n = { id: Date.now(), date: dateStr, month: mon, category: newExpCat, desc: newExpDesc, amount: parseFloat(newExpAmt) };
+    await dbService.saveItem('expenses', n);
+    await dbService.logActivity('CREATE', 'Finance', `Logged ${n.category} expense: ₹${n.amount.toLocaleString()} for "${n.desc}" (${dateStr})`, adminRole);
+    setNewExpCat('Operations'); setNewExpDesc(''); setNewExpAmt(''); setNewExpDate('');
+  };
+  const deleteExpense = async (id) => { 
+    await dbService.deleteItem('expenses', id);
+    await dbService.logActivity('DELETE', 'Finance', `Removed expense entry ID #${id}`, adminRole);
+  };
+
+  const handlePaySalary = async (emp) => {
     const today = new Date();
     const dateStr = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    const mon = `${today.toLocaleString('en-GB', { month: 'short' })} ${today.getFullYear()}`;
-    const n = { id: Date.now(), date: dateStr, month: mon, category: 'Salary', desc: `Salary for ${emp.name} (${mon})`, amount: emp.baseSalary };
-    const u = [n, ...expenses]; setExpenses(u); save('jprd_expenses', u);
-    alert(`Salary processed for ${emp.name}`);
+    const targetMonth = salaryMonth || `${today.toLocaleString('en-GB', { month: 'short' })} ${today.getFullYear()}`;
+    const n = { id: Date.now(), date: dateStr, month: targetMonth, category: 'Salary', desc: `Salary for ${emp.name} (${targetMonth})`, amount: emp.baseSalary };
+    await dbService.saveItem('expenses', n);
+    await dbService.logActivity('PAYROLL', 'Finance', `Disbursed salary of ₹${emp.baseSalary.toLocaleString()} to ${emp.name} for ${targetMonth}`, adminRole);
+    alert(`Salary for ${targetMonth} processed for ${emp.name}`);
   };
 
   /* ── Guard — after all hooks ── */
   if (!authorized) return null;
 
   const allNavItems = [
-    { id: 'analytics',    icon: BarChart3,  label: 'Analytics' },
-    { id: 'donations',    icon: Heart,      label: 'Donations' },
-    { id: 'finance',      icon: Wallet,     label: 'Finance' },
-    { id: 'volunteers',   icon: Users,      label: 'Volunteers' },
-    { id: 'testimonials', icon: Sparkles,   label: 'Testimonials' },
-    { id: 'carousel',     icon: ImageIcon,  label: 'Carousel' },
-    { id: 'events',       icon: Calendar,   label: 'Events' },
-    { id: 'gallery',      icon: ImageIcon,  label: 'Gallery' },
+    { id: 'analytics',    icon: BarChart3,    label: 'Analytics' },
+    { id: 'donations',    icon: Heart,        label: 'Donations' },
+    { id: 'finance',      icon: Wallet,       label: 'Finance' },
+    { id: 'volunteers',   icon: Users,        label: 'Volunteers' },
+    { id: 'testimonials', icon: Sparkles,     label: 'Testimonials' },
+    { id: 'carousel',     icon: ImageIcon,    label: 'Carousel' },
+    { id: 'events',       icon: Calendar,     label: 'Events' },
+    { id: 'gallery',      icon: ImageIcon,    label: 'Gallery' },
+    { id: 'audit_logs',   icon: ShieldCheck,  label: 'Audit Logs' },
   ];
 
   const navItems = allNavItems.filter(item => {
@@ -425,9 +783,29 @@ export default function AdminDashboard() {
         <main className={styles.mainContent}>
           <header className={styles.topbar}>
             <h2>{navItems.find(n => n.id === activeTab)?.label} Management</h2>
-            <div className={styles.userInfo}>
-              <div className={styles.userBadge}>{getRoleInitials()}</div>
-              <span>{getRoleLabel()}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+              <div 
+                title={dbService.isCloudConnected() ? "Cloud Database Connected (Multi-browser sync active)" : "Running in Local Storage Mode. Add Firebase keys in .env.local to enable Cloud Sync across all browsers."}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  fontSize: '0.8rem',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: '20px',
+                  background: dbService.isCloudConnected() ? 'rgba(46, 125, 50, 0.1)' : 'rgba(217, 107, 39, 0.1)',
+                  color: dbService.isCloudConnected() ? '#2e7d32' : '#d96b27',
+                  border: dbService.isCloudConnected() ? '1px solid rgba(46, 125, 50, 0.3)' : '1px solid rgba(217, 107, 39, 0.3)'
+                }}
+              >
+                {dbService.isCloudConnected() ? <Cloud size={14} /> : <CloudOff size={14} />}
+                <span>{dbService.isCloudConnected() ? "Cloud Sync Active" : "Local Mode (Offline)"}</span>
+              </div>
+
+              <div className={styles.userInfo}>
+                <div className={styles.userBadge}>{getRoleInitials()}</div>
+                <span>{getRoleLabel()}</span>
+              </div>
             </div>
           </header>
 
@@ -510,14 +888,39 @@ export default function AdminDashboard() {
                     <div className={styles.formGroup}><label>Email</label><input type="email" value={newDonorEmail} onChange={e=>setNewDonorEmail(e.target.value)} required placeholder="e.g. suresh@email.com" className={styles.dashInput}/></div>
                     <div className={styles.formGroup}><label>Amount (INR)</label><input type="number" value={newDonorAmount} onChange={e=>setNewDonorAmount(e.target.value)} required placeholder="e.g. 5000" min="1" className={styles.dashInput}/></div>
                     <div className={styles.formGroup}><label>Type</label><select value={newDonorType} onChange={e=>setNewDonorType(e.target.value)} className={styles.dashSelect}><option value="Monthly">Monthly Recurring</option><option value="One-time">One-time</option></select></div>
+                    <div className={styles.formGroup}><label>Donation Date (Optional / Past Date)</label><input type="date" value={newDonorDate} onChange={e=>setNewDonorDate(e.target.value)} className={styles.dashInput}/></div>
                     <button type="submit" className={styles.addBtn}><Plus size={16}/> Add Donor</button>
                   </form>
                 </div>
                 <div className={styles.tableCard}>
                   <div className={styles.tableHeader}>
                     <h3>Donation Records</h3>
-                    <div style={{display:'flex',gap:'0.75rem',flexWrap:'wrap'}}>
-                      <button className={styles.exportBtn} onClick={() => downloadCSV(filteredDonations, 'donations_report.csv', ['id', 'name', 'email', 'type', 'amount', 'date', 'month', 'status'])}><Download size={14}/> Export</button>
+                    <div style={{display:'flex',gap:'0.5rem',alignItems:'center',flexWrap:'wrap'}}>
+                      <button 
+                        className={styles.pdfReportBtn} 
+                        title="Download & Print official PDF report"
+                        onClick={() => generatePrintableReport(
+                          'Donations Ledger & 80G Contribution Statement',
+                          `Filtered Report for: ${donationMonth} | Type: ${donationTypeFilter}`,
+                          [
+                            { key: 'name', label: 'Donor Name' },
+                            { key: 'email', label: 'Email' },
+                            { key: 'type', label: 'Type' },
+                            { key: 'amount', label: 'Amount', isAmount: true },
+                            { key: 'date', label: 'Date' },
+                            { key: 'month', label: 'Month' },
+                            { key: 'status', label: 'Status' }
+                          ],
+                          filteredDonations,
+                          [
+                            { label: 'Total Raised in View', value: `₹${filteredDonations.reduce((a,d)=>a+d.amount,0).toLocaleString()}` },
+                            { label: 'Total Donors', value: filteredDonations.length },
+                            { label: 'Monthly Donors', value: filteredDonations.filter(d=>d.type==='Monthly').length }
+                          ]
+                        )}
+                      >
+                        <FileText size={15}/> Download PDF Report
+                      </button>
                       <div className={styles.filterGroup}><Filter size={16} className={styles.filterIcon}/><select value={donationTypeFilter} onChange={e=>setDonationTypeFilter(e.target.value)} className={styles.tableSelect}><option value="All">All Types</option><option value="Monthly">Monthly</option><option value="One-time">One-time</option></select></div>
                       <MonthFilter value={donationMonth} onChange={setDonationMonth}/>
                       {donationMonth !== 'All Months' && <button className={styles.clearFilter} onClick={()=>setDonationMonth('All Months')}>× Clear</button>}
@@ -564,6 +967,7 @@ export default function AdminDashboard() {
                       <div className={styles.formGroup}><label>Amount (INR)</label><input type="number" value={newExpAmt} onChange={e=>setNewExpAmt(e.target.value)} required placeholder="e.g. 5000" min="1" className={styles.dashInput}/></div>
                       <div className={styles.formGroup}><label>Category</label><select value={newExpCat} onChange={e=>setNewExpCat(e.target.value)} className={styles.dashSelect}><option>Operations</option><option>Marketing</option><option>Health</option><option>Education</option><option>Travel</option><option>Other</option></select></div>
                       <div className={styles.formGroup}><label>Description</label><input type="text" value={newExpDesc} onChange={e=>setNewExpDesc(e.target.value)} required placeholder="e.g. Rent" className={styles.dashInput}/></div>
+                      <div className={styles.formGroup}><label>Expense Date (Optional / Past Date)</label><input type="date" value={newExpDate} onChange={e=>setNewExpDate(e.target.value)} className={styles.dashInput}/></div>
                       <button type="submit" className={styles.addBtn}><Wallet size={16}/> Record Expense</button>
                     </form>
                   </div>
@@ -584,16 +988,61 @@ export default function AdminDashboard() {
                   <div className={styles.tableCard}>
                     <div className={styles.tableHeader}>
                       <h3>Staff Payroll</h3>
-                      <button className={styles.exportBtn} onClick={() => downloadCSV(employees, 'staff_payroll.csv', ['id', 'name', 'role', 'baseSalary', 'date', 'month'])}><Download size={14}/> Export</button>
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                        <div className={styles.filterGroup} title="Select which month's salary you are disbursing">
+                          <Calendar size={16} className={styles.filterIcon} />
+                          <select 
+                            value={salaryMonth} 
+                            onChange={e => setSalaryMonth(e.target.value)} 
+                            className={styles.tableSelect}
+                            style={{ fontWeight: 600 }}
+                          >
+                            {MONTHS.filter(m => m !== 'All Months').map(m => (
+                              <option key={m} value={m}>Pay for {m}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <button 
+                          className={styles.pdfReportBtn} 
+                          title="Generate official printable PDF Payroll report"
+                          onClick={() => generatePrintableReport(
+                            'Staff Payroll & Honorarium Statement',
+                            'Official Employee Compensation Register',
+                            [
+                              { key: 'name', label: 'Employee Name' },
+                              { key: 'role', label: 'Designation / Role' },
+                              { key: 'baseSalary', label: 'Monthly Base Salary', isAmount: true },
+                              { key: 'date', label: 'Onboarded Date' },
+                              { key: 'month', label: 'Registered Month' }
+                            ],
+                            employees,
+                            [
+                              { label: 'Total Active Staff', value: employees.length },
+                              { label: 'Monthly Payroll Liability', value: `₹${employees.reduce((a,e)=>a+(Number(e.baseSalary)||0),0).toLocaleString()}` }
+                            ]
+                          )}
+                        >
+                          <FileText size={15}/> Download PDF Report
+                        </button>
+                      </div>
                     </div>
                     <table className={styles.table}>
-                      <thead><tr><th>Employee</th><th>Salary</th><th>Action</th><th>Del</th></tr></thead>
+                      <thead><tr><th>Employee</th><th>Salary</th><th>Disburse Action</th><th>Del</th></tr></thead>
                       <tbody>
                         {employees.map(emp => (
                           <tr key={emp.id}>
                             <td><div className={styles.tableName}>{emp.name}</div><div className={styles.tableEmail}>{emp.role}</div></td>
                             <td className={styles.tableAmt}>&#8377;{emp.baseSalary.toLocaleString()}</td>
-                            <td><button className={styles.viewBtn} onClick={() => handlePaySalary(emp)} style={{background: 'var(--color-secondary)'}} title="Process Salary">Pay</button></td>
+                            <td>
+                              <button 
+                                className={styles.viewBtn} 
+                                onClick={() => handlePaySalary(emp)} 
+                                style={{ background: 'var(--color-secondary)', color: '#fff' }} 
+                                title={`Disburse salary for ${salaryMonth}`}
+                              >
+                                Pay {salaryMonth ? `(${salaryMonth.split(' ')[0]})` : ''}
+                              </button>
+                            </td>
                             <td><button className={styles.deleteBtn} onClick={()=>deleteEmployee(emp.id)}><Trash2 size={16}/></button></td>
                           </tr>
                         ))}
@@ -605,8 +1054,29 @@ export default function AdminDashboard() {
                   <div className={styles.tableCard}>
                     <div className={styles.tableHeader}>
                       <h3>Expense Ledger</h3>
-                      <div style={{display:'flex',gap:'0.75rem'}}>
-                        <button className={styles.exportBtn} onClick={() => downloadCSV(filteredExpenses, 'expense_ledger.csv', ['id', 'date', 'month', 'category', 'desc', 'amount'])}><Download size={14}/> Export</button>
+                      <div style={{display:'flex',gap:'0.5rem',alignItems:'center',flexWrap:'wrap'}}>
+                        <button 
+                          className={styles.pdfReportBtn} 
+                          title="Generate official printable PDF Expense report"
+                          onClick={() => generatePrintableReport(
+                            'Operational & Program Expense Statement',
+                            `Filtered Statement for: ${financeMonth}`,
+                            [
+                              { key: 'date', label: 'Date' },
+                              { key: 'category', label: 'Category' },
+                              { key: 'desc', label: 'Description' },
+                              { key: 'amount', label: 'Amount Disbursed', isAmount: true },
+                              { key: 'month', label: 'Month' }
+                            ],
+                            filteredExpenses,
+                            [
+                              { label: 'Total Disbursed in View', value: `₹${filteredExpenses.reduce((a,e)=>a+(Number(e.amount)||0),0).toLocaleString()}` },
+                              { label: 'Total Transactions', value: filteredExpenses.length }
+                            ]
+                          )}
+                        >
+                          <FileText size={15}/> Download PDF Report
+                        </button>
                         <MonthFilter value={financeMonth} onChange={setFinanceMonth}/>
                         {financeMonth !== 'All Months' && <button className={styles.clearFilter} onClick={()=>setFinanceMonth('All Months')}>× Clear</button>}
                       </div>
@@ -654,7 +1124,30 @@ export default function AdminDashboard() {
                 <div className={styles.tableCard}>
                   <div className={styles.tableHeader}>
                     <h3>Volunteers ({filteredVolunteers.length})</h3>
-                    <div style={{display:'flex',gap:'0.75rem',alignItems:'center'}}>
+                    <div style={{display:'flex',gap:'0.5rem',alignItems:'center',flexWrap:'wrap'}}>
+                      <button 
+                        className={styles.pdfReportBtn} 
+                        title="Generate official printable PDF Volunteers Directory report"
+                        onClick={() => generatePrintableReport(
+                          'Volunteers Roster & Community Engagement Directory',
+                          `Filtered Registry for: ${volunteerMonth}`,
+                          [
+                            { key: 'name', label: 'Volunteer Name' },
+                            { key: 'email', label: 'Email' },
+                            { key: 'phone', label: 'Contact Phone' },
+                            { key: 'interest', label: 'Primary Interest Area' },
+                            { key: 'date', label: 'Registration Date' },
+                            { key: 'month', label: 'Registered Month' }
+                          ],
+                          filteredVolunteers,
+                          [
+                            { label: 'Registered Volunteers', value: filteredVolunteers.length },
+                            { label: 'Active Filter Month', value: volunteerMonth }
+                          ]
+                        )}
+                      >
+                        <FileText size={15}/> Download PDF Report
+                      </button>
                       <MonthFilter value={volunteerMonth} onChange={setVolunteerMonth}/>
                       {volunteerMonth !== 'All Months' && <button className={styles.clearFilter} onClick={()=>setVolunteerMonth('All Months')}>× Clear</button>}
                     </div>
@@ -796,6 +1289,135 @@ export default function AdminDashboard() {
                     ))}
                   </div>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ══ AUDIT LOGS ══ */}
+          {activeTab === 'audit_logs' && (
+            <div className={styles.tabContent}>
+              <div className={styles.statsGrid}>
+                <div className={styles.statCard}>
+                  <span className={styles.statLabel}>Total Activity Logs</span>
+                  <span className={styles.statValue}>{auditLogs.length}</span>
+                  <span className={styles.statMeta}><Activity size={14} /> Permanent History</span>
+                </div>
+                <div className={styles.statCard}>
+                  <span className={styles.statLabel}>Financial Operations</span>
+                  <span className={styles.statValue}>{auditLogs.filter(l => l.category === 'Finance').length}</span>
+                  <span className={styles.statMeta}><Wallet size={14} /> Payroll & Expenses</span>
+                </div>
+                <div className={styles.statCard}>
+                  <span className={styles.statLabel}>Donor Actions</span>
+                  <span className={styles.statValue}>{auditLogs.filter(l => l.category === 'Donations').length}</span>
+                  <span className={styles.statMeta}><Heart size={14} /> Contributions</span>
+                </div>
+                <div className={styles.statCard}>
+                  <span className={styles.statLabel}>Current Admin Role</span>
+                  <span className={styles.statValue}>{getRoleLabel()}</span>
+                  <span className={styles.statMeta}><ShieldCheck size={14} /> {adminRole}</span>
+                </div>
+              </div>
+
+              <div className={styles.tableCard} style={{ marginTop: '1.5rem' }}>
+                <div className={styles.tableHeader}>
+                  <h3>Enterprise Audit Trail & System Log</h3>
+                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                    <div className={styles.filterGroup}>
+                      <Filter size={16} className={styles.filterIcon} />
+                      <select 
+                        value={auditCategoryFilter} 
+                        onChange={e => setAuditCategoryFilter(e.target.value)} 
+                        className={styles.tableSelect}
+                      >
+                        <option value="All">All Categories</option>
+                        <option value="Donations">Donations</option>
+                        <option value="Finance">Finance & Payroll</option>
+                        <option value="Volunteers">Volunteers</option>
+                        <option value="Events">Events</option>
+                        <option value="Carousel">Carousel</option>
+                        <option value="Gallery">Gallery</option>
+                        <option value="Testimonials">Testimonials</option>
+                      </select>
+                    </div>
+                    {auditLogs.length > 0 && (
+                      <button 
+                        className={styles.pdfReportBtn} 
+                        title="Generate official printable PDF Audit Trail report"
+                        onClick={() => generatePrintableReport(
+                          'Administrative & Financial Audit Trail',
+                          `Official Compliance Log | Category Filter: ${auditCategoryFilter}`,
+                          [
+                            { key: 'timeStr', label: 'Time' },
+                            { key: 'dateStr', label: 'Date' },
+                            { key: 'action', label: 'Action' },
+                            { key: 'category', label: 'Category' },
+                            { key: 'details', label: 'Details' },
+                            { key: 'role', label: 'Authorized Role' }
+                          ],
+                          auditLogs.filter(log => auditCategoryFilter === 'All' || log.category === auditCategoryFilter),
+                          [
+                            { label: 'Total Recorded Logs', value: auditLogs.length },
+                            { label: 'Filtered Entries', value: auditLogs.filter(log => auditCategoryFilter === 'All' || log.category === auditCategoryFilter).length }
+                          ]
+                        )}
+                      >
+                        <FileText size={15} /> Download PDF Report
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <table className={styles.table}>
+                  <thead>
+                    <tr>
+                      <th>Time & Date</th>
+                      <th>Action</th>
+                      <th>Category</th>
+                      <th>Details</th>
+                      <th>Authorized Role</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {auditLogs
+                      .filter(log => auditCategoryFilter === 'All' || log.category === auditCategoryFilter)
+                      .map((log) => {
+                        let actionBadgeClass = styles.badgeBlue;
+                        if (log.action === 'CREATE') actionBadgeClass = styles.badgeGreen;
+                        if (log.action === 'DELETE') actionBadgeClass = styles.badgeRed || styles.badgeBlue;
+                        if (log.action === 'PAYROLL') actionBadgeClass = styles.badgeGreen;
+
+                        return (
+                          <tr key={log.id}>
+                            <td style={{ whiteSpace: 'nowrap' }}>
+                              <div style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{log.timeStr}</div>
+                              <div style={{ fontSize: '0.8rem', color: '#777' }}>{log.dateStr}</div>
+                            </td>
+                            <td>
+                              <span className={`${styles.badge} ${actionBadgeClass}`}>
+                                {log.action}
+                              </span>
+                            </td>
+                            <td style={{ fontWeight: 500 }}>{log.category}</td>
+                            <td style={{ color: 'var(--color-text)' }}>{log.details}</td>
+                            <td>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--color-primary)' }}>
+                                {log.role}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    {auditLogs.filter(log => auditCategoryFilter === 'All' || log.category === auditCategoryFilter).length === 0 && (
+                      <tr>
+                        <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: '#888' }}>
+                          <ShieldCheck size={32} style={{ opacity: 0.3, marginBottom: '0.5rem', display: 'block', margin: '0 auto' }} />
+                          No activity records found for this filter.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}

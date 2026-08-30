@@ -87,6 +87,7 @@
     "file-entry-cache": "^8.0.0",
     "fill-range": "^7.1.1",
     "find-up": "^5.0.0",
+    "firebase": "^12.18.0",
     "flat-cache": "^4.0.1",
     "flatted": "^3.4.4",
     "for-each": "^0.3.5",

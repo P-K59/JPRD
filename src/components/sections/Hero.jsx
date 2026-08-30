@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import styles from './Hero.module.css';
 import Button from '../ui/Button';
+import { dbService } from '../../lib/dbService';
 
 const defaultCarousel = [
   { url: '/images/carousel-1.jpg' },
@@ -22,11 +23,12 @@ const Hero = () => {
   const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
-    // Load from localStorage if present
-    const stored = localStorage.getItem('jprd_carousel');
-    if (stored) {
-      setCarousel(JSON.parse(stored));
-    }
+    const unsubscribe = dbService.subscribe('carousel', defaultCarousel, (data) => {
+      if (data && data.length > 0) {
+        setCarousel(data);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {

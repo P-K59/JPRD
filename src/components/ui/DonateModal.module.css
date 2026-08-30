@@ -224,19 +224,233 @@
   width: 100%;
 }
 
+/* QR Code Payment Gateway View */
+.qrModalContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1.2rem;
+  animation: modalIn 0.3s ease-out;
+}
+
+.qrHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.securePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(31, 91, 53, 0.1);
+  color: #1F5B35;
+  padding: 0.35rem 0.85rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.qrHeader h3 {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin-top: 0.2rem;
+}
+
+.qrSub {
+  font-size: 0.95rem;
+  color: var(--color-text-light);
+}
+
+.qrBoxWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid var(--color-border);
+  padding: 1.25rem;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 320px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.06);
+}
+
+.qrImageFrame {
+  position: relative;
+  width: 210px;
+  height: 210px;
+  background: #ffffff;
+  padding: 8px;
+  border-radius: 16px;
+  border: 2px solid #e2e8f0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qrImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.scanLaser {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #10b981, transparent);
+  box-shadow: 0 0 12px #10b981;
+  animation: scanLaser 2s infinite ease-in-out;
+}
+
+@keyframes scanLaser {
+  0%   { top: 5%; opacity: 0.8; }
+  50%  { top: 90%; opacity: 1; }
+  100% { top: 5%; opacity: 0.8; }
+}
+
+.appBadges {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.appName {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #ffffff;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+}
+
+/* 10s Timer Box */
+.timerCard {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.timerProgress {
+  width: 100%;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.timerBar {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #1F5B35);
+  border-radius: 10px;
+  transition: width 1s linear;
+}
+
+.timerText {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.spinIcon {
+  color: #10b981;
+  animation: spin 1.5s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.qrActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  width: 100%;
+}
+
+.confirmPaidBtn {
+  background: #1F5B35;
+  color: #ffffff;
+  border: none;
+  padding: 0.95rem 1.5rem;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 0.95rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  transition: all 0.2s;
+  box-shadow: 0 4px 15px rgba(31, 91, 53, 0.3);
+}
+
+.confirmPaidBtn:hover {
+  background: #164326;
+  transform: translateY(-2px);
+}
+
+.backBtn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.backBtn:hover {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
 /* Success State */
 .successWrapper {
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1.25rem;
-  padding: 1rem 0;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  animation: modalIn 0.35s ease-out;
+}
+
+.receiptBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #e2fbe8;
+  color: #15803d;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0.35rem 0.9rem;
+  border-radius: 20px;
 }
 
 .heartGlow {
-  width: 80px;
-  height: 80px;
+  width: 76px;
+  height: 76px;
   border-radius: 50%;
   background: rgba(31, 91, 53, 0.1);
   color: var(--color-secondary);
@@ -251,10 +465,12 @@
   50%       { transform: scale(1.08); box-shadow: 0 0 15px 5px rgba(31, 91, 53, 0.1); }
 }
 
-.successIcon { fill: var(--color-secondary); }
+.successIcon { 
+  color: var(--color-secondary);
+}
 
 .successWrapper h2 {
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: 800;
   color: var(--color-primary);
 }
@@ -262,7 +478,37 @@
 .successWrapper p {
   font-size: 0.95rem;
   color: var(--color-text-light);
-  line-height: 1.6;
-  max-width: 380px;
-  margin-bottom: 0.5rem;
+  line-height: 1.5;
+  max-width: 440px;
+}
+
+.successSummaryBox {
+  width: 100%;
+  max-width: 420px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.successSummaryBox div {
+  display: flex;
+  flex-direction: column;
+}
+
+.successSummaryBox span {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.successSummaryBox strong {
+  color: #0f172a;
+  font-size: 0.95rem;
 }

@@ -5,6 +5,7 @@ import { useRef } from 'react';
 import styles from './Events.module.css';
 import { Calendar, MapPin, ArrowRight } from 'lucide-react';
 import Card from '../ui/Card';
+import { dbService } from '../../lib/dbService';
 
 const defaultEvents = [
   {
@@ -36,15 +37,12 @@ const Events = () => {
   const [events, setEvents] = useState(defaultEvents);
 
   useEffect(() => {
-    // Load events from localStorage if admin has set them
-    const stored = localStorage.getItem('jprd_events');
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (parsed.length > 0) setEvents(parsed);
-    } else {
-      // Seed defaults into localStorage so admin can see them
-      localStorage.setItem('jprd_events', JSON.stringify(defaultEvents));
-    }
+    const unsubscribe = dbService.subscribe('events', defaultEvents, (data) => {
+      if (data && data.length > 0) {
+        setEvents(data);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   const containerVariants = {

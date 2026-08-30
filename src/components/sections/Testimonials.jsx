@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence, useInView } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import styles from './Testimonials.module.css';
+import { dbService } from '../../lib/dbService';
 
 const defaultTestimonials = [
   {
@@ -32,11 +33,12 @@ const Testimonials = () => {
   const isInView = useInView(ref, { once: true, margin: "-100px" });
 
   useEffect(() => {
-    // Load dynamically from localStorage to link with Admin Panel
-    const stored = localStorage.getItem('jprd_testimonials');
-    if (stored) {
-      setTestimonials(JSON.parse(stored));
-    }
+    const unsubscribe = dbService.subscribe('testimonials', defaultTestimonials, (data) => {
+      if (data && data.length > 0) {
+        setTestimonials(data);
+      }
+    });
+    return () => unsubscribe();
   }, []);
 
   const handleNext = () => {

@@ -1,8 +1,9 @@
 "use client";
-import React, { useState } from 'react';
-import { X, Heart, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Heart, ShieldCheck, CheckCircle2, QrCode, Sparkles, Smartphone, Check, Loader2 } from 'lucide-react';
 import styles from './DonateModal.module.css';
 import Button from './Button';
+import { dbService } from '../../lib/dbService';
 
 const PRESET_AMOUNTS = [
   { amount: 200,  label: '₹200',  impact: 'Buys textbooks for 1 child for a month' },
@@ -15,10 +16,12 @@ const PRESET_AMOUNTS = [
 export default function DonateModal({ isOpen, onClose }) {
   const [donorName, setDonorName] = useState('');
   const [donorEmail, setDonorEmail] = useState('');
-  const [amount, setAmount] = useState('');
-  const [selectedPreset, setSelectedPreset] = useState(null);
+  const [amount, setAmount] = useState('500');
+  const [selectedPreset, setSelectedPreset] = useState(500);
   const [donationType, setDonationType] = useState('Monthly');
-  const [status, setStatus] = useState('idle'); // idle, submitting, success
+  const [status, setStatus] = useState('idle'); // idle, payment_qr, success
+  const [timeLeft, setTimeLeft] = useState(60);
+  const [pendingDonation, setPendingDonation] = useState(null);
 
   const handlePresetSelect = (preset) => {
     setSelectedPreset(preset.amount);
@@ -35,39 +38,75 @@ export default function DonateModal({ isOpen, onClose }) {
     return match ? match.impact : null;
   };
 
-  const handleDonateSubmit = (e) => {
+  const handleDonateSubmit = async (e) => {
     e.preventDefault();
-    setStatus('submitting');
+    if (!amount || parseFloat(amount) <= 0) return;
 
-    setTimeout(() => {
-      const stored = localStorage.getItem('jprd_donations');
-      const donationsList = stored ? JSON.parse(stored) : [];
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const mon = `${today.toLocaleString('en-GB', { month: 'short' })} ${today.getFullYear()}`;
 
-      const newDonation = {
-        id: Date.now(),
-        name: donorName,
-        email: donorEmail,
-        amount: parseFloat(amount),
-        type: donationType,
-        date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        status: donationType === 'Monthly' ? 'Active' : 'Completed'
-      };
+    const newDonation = {
+      id: Date.now(),
+      name: donorName,
+      email: donorEmail,
+      amount: parseFloat(amount),
+      type: donationType,
+      date: dateStr,
+      month: mon,
+      status: donationType === 'Monthly' ? 'Active' : 'Completed'
+    };
 
-      localStorage.setItem('jprd_donations', JSON.stringify([newDonation, ...donationsList]));
+    setPendingDonation(newDonation);
+    setStatus('payment_qr');
+    setTimeLeft(60);
+  };
+
+  // 60-second (1 minute) countdown
+  useEffect(() => {
+    let timer;
+    if (status === 'payment_qr' && timeLeft > 0) {
+      timer = setInterval(() => {
+        setTimeLeft(prev => prev - 1);
+      }, 1000);
+    } else if (status === 'payment_qr' && timeLeft === 0) {
+      // Auto transition to Thank You window when timer runs out
+      if (pendingDonation) {
+        dbService.saveItem('donations', pendingDonation);
+        dbService.logActivity('CREATE', 'Donations', `Contribution intent of ₹${pendingDonation.amount.toLocaleString()} received via UPI QR from ${pendingDonation.name}`, 'donor');
+      }
       setStatus('success');
-    }, 1500);
+    }
+    return () => clearInterval(timer);
+  }, [status, timeLeft, pendingDonation]);
+
+  const handleConfirmPaidNow = async () => {
+    if (pendingDonation) {
+      await dbService.saveItem('donations', pendingDonation);
+      await dbService.logActivity('CREATE', 'Donations', `Contribution intent of ₹${pendingDonation.amount.toLocaleString()} received via UPI QR from ${pendingDonation.name}`, 'donor');
+    }
+    setStatus('success');
   };
 
   const handleClose = () => {
     setStatus('idle');
     setDonorName('');
     setDonorEmail('');
-    setAmount('');
-    setSelectedPreset(null);
+    setAmount('500');
+    setSelectedPreset(500);
+    setTimeLeft(60);
+    setPendingDonation(null);
     onClose();
   };
 
   if (!isOpen) return null;
+
+  // Format seconds into MM:SS
+  const formatTime = (secs) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m}:${s < 10 ? '0' : ''}${s}`;
+  };
 
   return (
     <div className={styles.modalOverlay}>
@@ -76,14 +115,85 @@ export default function DonateModal({ isOpen, onClose }) {
           <X size={20} />
         </button>
 
-        {status === 'success' ? (
+        {status === 'payment_qr' ? (
+          <div className={styles.qrModalContent}>
+            <div className={styles.qrHeader}>
+              <span className={styles.securePill}>
+                <ShieldCheck size={14} /> Official UPI Payment
+              </span>
+              <h3>Scan & Pay with Any UPI App</h3>
+              <p className={styles.qrSub}>
+                Pledge amount: <strong style={{ color: '#1F5B35', fontSize: '1.15rem' }}>₹{parseFloat(amount || 0).toLocaleString()}</strong> ({donationType})
+              </p>
+            </div>
+
+            <div className={styles.qrBoxWrapper}>
+              <div className={styles.qrImageFrame}>
+                <img 
+                  src="/qr-payment.jpg" 
+                  alt="JPRD Foundation UPI Payment QR Code" 
+                  className={styles.qrImage}
+                />
+                <div className={styles.scanLaser} />
+              </div>
+
+              <div className={styles.appBadges}>
+                <span className={styles.appName}>Google Pay</span>
+                <span className={styles.appName}>PhonePe</span>
+                <span className={styles.appName}>Paytm</span>
+                <span className={styles.appName}>BHIM UPI</span>
+              </div>
+            </div>
+
+            <div className={styles.timerCard}>
+              <div className={styles.timerProgress}>
+                <div 
+                  className={styles.timerBar} 
+                  style={{ width: `${(timeLeft / 60) * 100}%` }}
+                />
+              </div>
+              <div className={styles.timerText}>
+                <Loader2 size={15} className={styles.spinIcon} />
+                <span>Please complete payment in UPI app (Window closes in <strong>{formatTime(timeLeft)}</strong>)</span>
+              </div>
+            </div>
+
+            <div className={styles.qrActions}>
+              <button 
+                type="button" 
+                className={styles.confirmPaidBtn}
+                onClick={handleConfirmPaidNow}
+              >
+                <Check size={17} /> Continue
+              </button>
+              <button 
+                type="button" 
+                className={styles.backBtn}
+                onClick={() => setStatus('idle')}
+              >
+                ← Change Amount / Edit Details
+              </button>
+            </div>
+          </div>
+        ) : status === 'success' ? (
           <div className={styles.successWrapper}>
             <div className={styles.heartGlow}>
               <Heart size={48} className={styles.successIcon} />
             </div>
+            <div className={styles.receiptBadge}>
+              <Sparkles size={14} /> Thank You for Your Generous Support
+            </div>
             <h2>Thank You for Your Support!</h2>
-            <p>Your contribution of <strong>₹{parseFloat(amount).toLocaleString()} ({donationType})</strong> has been recorded. It will directly support our educational and community drives.</p>
-            <Button variant="primary" size="md" onClick={handleClose}>
+            <p>
+              Dear <strong>{donorName || 'Generous Supporter'}</strong>, thank you for standing with JPRD Foundation. Your pledge of <strong style={{color:'#1F5B35'}}>₹{parseFloat(amount || 0).toLocaleString()} ({donationType})</strong> directly helps us empower rural communities with education and healthcare.
+            </p>
+            <div className={styles.successSummaryBox}>
+              <div><span>Donor Name:</span> <strong>{donorName || 'Supporter'}</strong></div>
+              <div><span>Amount:</span> <strong>₹{parseFloat(amount || 0).toLocaleString()}</strong></div>
+              <div><span>Frequency:</span> <strong>{donationType}</strong></div>
+              <div><span>Tax Benefit:</span> <strong>Eligible under 80G</strong></div>
+            </div>
+            <Button variant="primary" size="md" onClick={handleClose} style={{ minWidth: 180 }}>
               Close Window
             </Button>
           </div>

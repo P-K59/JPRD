@@ -5,6 +5,7 @@ import { useRef } from 'react';
 import styles from './Volunteer.module.css';
 import Button from '../ui/Button';
 import { CheckCircle2 } from 'lucide-react';
+import { dbService } from '../../lib/dbService';
 
 const Volunteer = () => {
   const ref = useRef(null);
@@ -12,7 +13,7 @@ const Volunteer = () => {
   
   const [formState, setFormState] = useState('idle'); // idle, submitting, success
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setFormState('submitting');
 
@@ -21,31 +22,30 @@ const Volunteer = () => {
     const phone = e.target.elements[2].value;
     const interest = e.target.elements[3].value;
 
-    setTimeout(() => {
-      // Save volunteer log in localStorage for Admin Panel view
-      const stored = localStorage.getItem('jprd_volunteers');
-      const volunteersList = stored ? JSON.parse(stored) : [];
-      
-      const interestMap = {
-        education: "Education & Teaching",
-        health: "Health Campaigns",
-        events: "Event Organizing",
-        skills: "Skill Training",
-        other: "General Interest"
-      };
+    const interestMap = {
+      education: "Education & Teaching",
+      health: "Health Campaigns",
+      events: "Event Organizing",
+      skills: "Skill Training",
+      other: "General Interest"
+    };
 
-      const newVol = {
-        id: Date.now(),
-        name,
-        email,
-        phone,
-        interest: interestMap[interest] || "General Interest",
-        date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-      };
-      
-      localStorage.setItem('jprd_volunteers', JSON.stringify([newVol, ...volunteersList]));
-      setFormState('success');
-    }, 1500);
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const mon = `${today.toLocaleString('en-GB', { month: 'short' })} ${today.getFullYear()}`;
+
+    const newVol = {
+      id: Date.now(),
+      name,
+      email,
+      phone,
+      interest: interestMap[interest] || "General Interest",
+      date: dateStr,
+      month: mon
+    };
+    
+    await dbService.saveItem('volunteers', newVol);
+    setFormState('success');
   };
 
   return (
