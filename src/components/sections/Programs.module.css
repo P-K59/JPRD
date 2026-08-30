@@ -1,0 +1,150 @@
+.programs {
+  padding: 8rem 0;
+  background-color: var(--color-bg-light);
+  position: relative;
+}
+
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.header {
+  text-align: center;
+  max-width: 800px;
+  margin: 0 auto 5rem;
+}
+
+.title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+  color: var(--color-primary);
+}
+
+.subtitle {
+  font-size: 1.125rem;
+  color: var(--color-text-light);
+  line-height: 1.7;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 2.5rem;
+}
+
+.cardWrapper {
+  height: 100%;
+}
+
+.cardLink {
+  display: block;
+  height: 100%;
+}
+
+.programCard {
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-surface);
+  position: relative;
+  transition: transform var(--transition-normal), box-shadow var(--transition-normal);
+  border: 1px solid var(--color-border);
+}
+
+.programCard:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-lg);
+}
+
+.cardContent {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.iconWrapper {
+  width: 60px;
+  height: 60px;
+  background: rgba(35, 122, 87, 0.1);
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-secondary);
+  transition: all var(--transition-normal);
+}
+
+.programCard:hover .iconWrapper {
+  background: var(--color-secondary);
+  color: var(--color-white);
+  transform: translateY(-5px);
+}
+
+.categoryBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: rgba(7, 27, 58, 0.05);
+  padding: 0.35rem 0.75rem;
+  border-radius: 20px;
+}
+
+.programTitle {
+  font-size: 1.35rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: var(--color-primary);
+}
+
+.programDesc {
+  color: var(--color-text-dark);
+  line-height: 1.6;
+  margin-bottom: 2rem;
+  flex-grow: 1;
+}
+
+.exploreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-secondary);
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: gap var(--transition-normal);
+  margin-top: auto;
+}
+
+.programCard:hover .exploreBtn {
+  gap: 1rem;
+}
+
+.hoverBg {
+  position: absolute;
+  bottom: -50px;
+  right: -50px;
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(244,123,53,0.08) 0%, transparent 70%);
+  border-radius: 50%;
+  transition: all 0.6s ease;
+  z-index: 1;
+  opacity: 0;
+}
+
+.programCard:hover .hoverBg {
+  transform: scale(2.5);
+  opacity: 1;
+}

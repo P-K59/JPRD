@@ -1,0 +1,345 @@
+.csr {
+  padding: 8rem 0;
+  background-color: var(--color-bg);
+  position: relative;
+}
+
+.container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+.header {
+  text-align: center;
+  max-width: 900px;
+  margin: 0 auto 5rem;
+}
+
+.title {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 800;
+  margin-bottom: 1.5rem;
+  color: var(--color-primary);
+  line-height: 1.1;
+}
+
+.highlight {
+  color: var(--color-secondary);
+}
+
+.subtitle {
+  font-size: 1.25rem;
+  color: var(--color-text-light);
+  line-height: 1.7;
+}
+
+.sectionDivider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 6rem 0 4rem;
+}
+
+.sectionHeader {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.sectionHeader h3 {
+  font-size: 2rem;
+  color: var(--color-primary);
+  margin-bottom: 1rem;
+}
+
+.sectionHeader p {
+  color: var(--color-text-light);
+  font-size: 1.125rem;
+}
+
+/* 3D Visual Flow */
+.visualFlow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 4rem;
+  flex-wrap: wrap;
+}
+
+.flowCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  padding: 1.5rem 2rem;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  color: var(--color-primary);
+  box-shadow: var(--shadow-md);
+  min-width: 160px;
+}
+
+.flowCard svg {
+  color: var(--color-secondary);
+}
+
+.flowArrow {
+  color: var(--color-border);
+}
+
+/* Focus Areas Grid */
+.focusGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+}
+
+.focusCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  transition: all var(--transition-normal);
+}
+
+.focusCard:hover {
+  background: rgba(35, 122, 87, 0.05);
+  border-color: rgba(35, 122, 87, 0.3);
+  transform: translateY(-5px);
+}
+
+.focusIcon {
+  color: var(--color-secondary);
+}
+
+.focusTitle {
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+/* Timeline grid replacement */
+.timeline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.timelineStep {
+  background: var(--color-surface);
+  padding: 2rem;
+  border-radius: 16px;
+  border: 1px solid var(--color-border);
+  position: relative;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+}
+
+.timelineStep:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-md);
+  border-color: rgba(35, 122, 87, 0.2);
+}
+
+.timelineNum {
+  font-family: var(--font-heading);
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--color-accent);
+  margin-bottom: 1rem;
+}
+
+.timelineTitle {
+  font-size: 1.25rem;
+  color: var(--color-primary);
+  margin-bottom: 0.5rem;
+}
+
+.timelineDesc {
+  color: var(--color-text-light);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+/* 3D Framework Grid */
+.frameworkGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 2rem;
+  margin-top: 2rem;
+}
+
+.frameworkCardWrapper {
+  display: flex;
+  perspective: 1000px;
+}
+
+.frameworkCard {
+  background: var(--color-surface);
+  border-top: 4px solid var(--color-primary);
+  border-left: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 20px;
+  padding: 2.25rem 1.75rem;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+  transform-style: preserve-3d;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.frameworkCard:hover {
+  transform: translateY(-8px) rotateX(1deg) rotateY(1deg);
+  box-shadow: var(--shadow-3d);
+  border-color: rgba(11, 37, 69, 0.15);
+}
+
+.frameworkHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.frameworkIconBg {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.frameworkStepNum {
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: var(--color-text-light);
+  letter-spacing: 0.05em;
+}
+
+.frameworkTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  margin-bottom: 0.25rem;
+}
+
+.frameworkSubTitle {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-secondary);
+  margin-bottom: 1.25rem;
+  display: block;
+}
+
+.frameworkDesc {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--color-text-light);
+  margin-top: auto;
+}
+
+/* Why Partner */
+.whyGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.whyCard {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.whyIcon {
+  color: var(--color-secondary);
+  flex-shrink: 0;
+}
+
+/* CTA Box */
+.ctaWrapper {
+  margin-top: 6rem;
+}
+
+.ctaBox {
+  width: 100%;
+  background: var(--color-primary);
+  border-radius: 24px;
+  padding: 4rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3rem;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255,255,255,0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.ctaBox::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+  filter: blur(40px);
+}
+
+.ctaContent {
+  position: relative;
+  z-index: 2;
+  color: var(--color-white);
+  flex: 1;
+}
+
+.ctaTitle {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin-bottom: 1rem;
+  color: var(--color-white);
+}
+
+.ctaDesc {
+  font-size: 1.125rem;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+}
+
+.ctaActions {
+  display: flex;
+  gap: 1rem;
+  position: relative;
+  z-index: 2;
+}
+
+@media (max-width: 992px) {
+  .visualFlow {
+    flex-direction: column;
+  }
+  .flowArrow {
+    transform: rotate(90deg);
+  }
+  .ctaBox {
+    flex-direction: column;
+    text-align: center;
+    padding: 3rem 2rem;
+  }
+  .ctaActions {
+    flex-direction: column;
+    width: 100%;
+  }
+}
