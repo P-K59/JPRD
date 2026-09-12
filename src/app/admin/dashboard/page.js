@@ -5,7 +5,8 @@ import {
   Users, Heart, Image as ImageIcon, LogOut,
   Trash2, Plus, Sparkles, Filter, CheckCircle,
   BarChart3, Calendar, TrendingUp, ArrowUpRight,
-  Target, Activity, UserPlus, Eye, Wallet, Download, Cloud, CloudOff, ShieldCheck, FileText, Printer
+  Target, Activity, UserPlus, Eye, Wallet, Download, Cloud, CloudOff, ShieldCheck, FileText, Printer,
+  Menu, X as CloseIcon, GraduationCap, Award, BookOpen, Search
 } from 'lucide-react';
 import styles from '../admin.module.css';
 import DonorProfile from '../../../components/admin/DonorProfile';
@@ -13,6 +14,7 @@ import { dbService } from '../../../lib/dbService';
 
 /* ─── seed data ─── */
 const initialDonations = [];
+const initialStudents = [];
 const initialTestimonials = [
   { id: 1, name: "Rohan Verma",      role: "Education Drive Beneficiary",  quote: "Thanks to JPRD Foundation, I received a learning scholarship.", avatar: "RV" },
   { id: 2, name: "Dr. Shalini Mehta",role: "Voluntary General Physician",  quote: "Volunteering at JPRD's health camps has been incredibly fulfilling.", avatar: "SM" },
@@ -40,6 +42,12 @@ const initialExpenses = [];
 
 const DONATION_GOAL = 500000;
 const MONTHS = ["All Months","Jan 2026","Feb 2026","Mar 2026","Apr 2026","May 2026","Jun 2026","Jul 2026","Aug 2026","Sep 2026","Oct 2026","Nov 2026","Dec 2026"];
+const SKILL_LEVELS = [
+  "Level 1 (Foundation)",
+  "Level 2 (Explorer)",
+  "Level 3 (Skill Building)",
+  "Level 4 (Future Ready)"
+];
 
 /* ─── Helpers ─── */
 function load(key) {
@@ -403,12 +411,14 @@ function normalizeDates(records) {
 /* ════════════════════════════════════════════════════ */
 export default function AdminDashboard() {
   const router = useRouter();
-  const [activeTab,     setActiveTab]     = useState('analytics');
-  const [authorized,    setAuthorized]    = useState(false);
-  const [adminRole,     setAdminRole]     = useState('superadmin');
-  const [selectedDonor, setSelectedDonor] = useState(null);
+  const [activeTab,        setActiveTab]        = useState('analytics');
+  const [authorized,       setAuthorized]       = useState(false);
+  const [adminRole,        setAdminRole]        = useState('superadmin');
+  const [selectedDonor,    setSelectedDonor]    = useState(null);
+  const [mobileMenuOpen,   setMobileMenuOpen]   = useState(false);
 
   const [donations,    setDonations]    = useState([]);
+  const [students,     setStudents]     = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [carousel,     setCarousel]     = useState([]);
   const [volunteers,   setVolunteers]   = useState([]);
@@ -425,6 +435,10 @@ export default function AdminDashboard() {
   const [donationTypeFilter, setDonationTypeFilter] = useState('All');
   const [volunteerMonth,     setVolunteerMonth]     = useState('All Months');
   const [financeMonth,       setFinanceMonth]       = useState('All Months');
+  const [studentMonth,       setStudentMonth]       = useState('All Months');
+  const [studentLevelFilter, setStudentLevelFilter] = useState('All');
+  const [studentFeeFilter,   setStudentFeeFilter]   = useState('All');
+  const [studentSearch,      setStudentSearch]      = useState('');
 
   /* ── Form: donations ── */
   const [newDonorName,   setNewDonorName]   = useState('');
@@ -432,6 +446,17 @@ export default function AdminDashboard() {
   const [newDonorAmount, setNewDonorAmount] = useState('');
   const [newDonorType,   setNewDonorType]   = useState('Monthly');
   const [newDonorDate,   setNewDonorDate]   = useState(''); // Custom transaction date
+
+  /* ── Form: students ── */
+  const [newStuName,     setNewStuName]     = useState('');
+  const [newStuParent,   setNewStuParent]   = useState('');
+  const [newStuPhone,    setNewStuPhone]    = useState('');
+  const [newStuAadhaar,  setNewStuAadhaar]  = useState('');
+  const [newStuAddress,  setNewStuAddress]  = useState('');
+  const [newStuLevel,    setNewStuLevel]    = useState('Level 1 (Foundation)');
+  const [newStuFee,      setNewStuFee]      = useState('500');
+  const [newStuFeeStatus,setNewStuFeeStatus]= useState('Paid'); // Paid, Pending, Scholarship
+  const [newStuDate,     setNewStuDate]     = useState('');
 
   /* ── Form: testimonials ── */
   const [newTestName,  setNewTestName]  = useState('');
@@ -479,6 +504,26 @@ export default function AdminDashboard() {
     volunteers.filter(v =>
       volunteerMonth === 'All Months' || getMonth(v) === volunteerMonth
     ), [volunteers, volunteerMonth]);
+
+  const filteredStudents = useMemo(() => {
+    return students.filter(s => {
+      const matchMonth = studentMonth === 'All Months' || getMonth(s) === studentMonth;
+      const matchLevel = studentLevelFilter === 'All' || s.level === studentLevelFilter;
+      const matchFee   = studentFeeFilter === 'All' || s.feeStatus === studentFeeFilter;
+      const q = studentSearch.trim().toLowerCase();
+      const matchSearch = !q || 
+        (s.name && s.name.toLowerCase().includes(q)) ||
+        (s.parentName && s.parentName.toLowerCase().includes(q)) ||
+        (s.phone && s.phone.includes(q)) ||
+        (s.aadhaar && s.aadhaar.includes(q)) ||
+        (s.address && s.address.toLowerCase().includes(q));
+      return matchMonth && matchLevel && matchFee && matchSearch;
+    });
+  }, [students, studentMonth, studentLevelFilter, studentFeeFilter, studentSearch]);
+
+  const studentPaidCount = useMemo(() => students.filter(s => s.feeStatus === 'Paid').length, [students]);
+  const studentPendingCount = useMemo(() => students.filter(s => s.feeStatus === 'Pending').length, [students]);
+  const studentTotalFeesCollected = useMemo(() => students.filter(s => s.feeStatus === 'Paid').reduce((sum, s) => sum + (Number(s.fee) || 0), 0), [students]);
 
   const analyticsDonations = useMemo(() =>
     analyticsMonth === 'All Months'
@@ -554,6 +599,10 @@ export default function AdminDashboard() {
       setExpenses(normalizeDates(data));
     });
 
+    const unSubStudents = dbService.subscribe('students', initialStudents, (data) => {
+      setStudents(normalizeDates(data));
+    });
+
     const unSubAuditLogs = dbService.subscribe('audit_logs', [], (data) => {
       // Sort newest first
       const sorted = [...data].sort((a, b) => new Date(b.timestamp || b.id) - new Date(a.timestamp || a.id));
@@ -569,6 +618,7 @@ export default function AdminDashboard() {
       unSubGallery();
       unSubEmployees();
       unSubExpenses();
+      unSubStudents();
       unSubAuditLogs();
     };
   }, [router]);
@@ -590,6 +640,62 @@ export default function AdminDashboard() {
     const donor = donations.find(d => String(d.id) === String(id));
     await dbService.deleteItem('donations', id);
     await dbService.logActivity('DELETE', 'Donations', `Deleted donor record: ${donor?.name || id}`, adminRole);
+  };
+
+  /* ── Student Handlers ── */
+  const handleAddStudent = async (e) => {
+    e.preventDefault();
+    const chosenDate = newStuDate ? new Date(newStuDate) : new Date();
+    const dateStr = chosenDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const mon = `${chosenDate.toLocaleString('en-GB', { month: 'short' })} ${chosenDate.getFullYear()}`;
+    const n = {
+      id: Date.now(),
+      name: newStuName,
+      parentName: newStuParent,
+      phone: newStuPhone,
+      aadhaar: newStuAadhaar,
+      address: newStuAddress,
+      level: newStuLevel,
+      fee: parseFloat(newStuFee || 0),
+      feeStatus: newStuFeeStatus,
+      date: dateStr,
+      month: mon,
+      status: 'In Training'
+    };
+    await dbService.saveItem('students', n);
+    await dbService.logActivity('CREATE', 'Students', `Enrolled student ${n.name} in ${n.level} with fee ₹${n.fee} (${n.feeStatus})`, adminRole);
+    setNewStuName(''); setNewStuParent(''); setNewStuPhone(''); setNewStuAadhaar(''); setNewStuAddress(''); setNewStuDate('');
+  };
+
+  const deleteStudent = async (id) => {
+    const student = students.find(s => String(s.id) === String(id));
+    await dbService.deleteItem('students', id);
+    await dbService.logActivity('DELETE', 'Students', `Removed student record: ${student?.name || id}`, adminRole);
+  };
+
+  const handlePromoteLevel = async (student) => {
+    const levelMap = {
+      "Level 1 (Foundation)": "Level 2 (Explorer)",
+      "Level 2 (Explorer)": "Level 3 (Skill Building)",
+      "Level 3 (Skill Building)": "Level 4 (Future Ready)",
+      "Level 4 (Future Ready)": "Certified / Completed"
+    };
+    const nextLevel = levelMap[student.level];
+    if (!nextLevel) return;
+    const updated = {
+      ...student,
+      level: nextLevel,
+      status: nextLevel === "Certified / Completed" ? "Certified" : "In Training"
+    };
+    await dbService.saveItem('students', updated);
+    await dbService.logActivity('UPDATE', 'Students', `Promoted student ${student.name} to ${nextLevel}`, adminRole);
+  };
+
+  const handleToggleFeeStatus = async (student) => {
+    const nextStatus = student.feeStatus === 'Paid' ? 'Pending' : 'Paid';
+    const updated = { ...student, feeStatus: nextStatus };
+    await dbService.saveItem('students', updated);
+    await dbService.logActivity('UPDATE', 'Students', `Updated fee payment status for ${student.name} to ${nextStatus}`, adminRole);
   };
 
   const handleAddTest = async (e) => {
@@ -702,21 +808,22 @@ export default function AdminDashboard() {
   if (!authorized) return null;
 
   const allNavItems = [
-    { id: 'analytics',    icon: BarChart3,    label: 'Analytics' },
-    { id: 'donations',    icon: Heart,        label: 'Donations' },
-    { id: 'finance',      icon: Wallet,       label: 'Finance' },
-    { id: 'volunteers',   icon: Users,        label: 'Volunteers' },
-    { id: 'testimonials', icon: Sparkles,     label: 'Testimonials' },
-    { id: 'carousel',     icon: ImageIcon,    label: 'Carousel' },
-    { id: 'events',       icon: Calendar,     label: 'Events' },
-    { id: 'gallery',      icon: ImageIcon,    label: 'Gallery' },
-    { id: 'audit_logs',   icon: ShieldCheck,  label: 'Audit Logs' },
+    { id: 'analytics',    icon: BarChart3,     label: 'Analytics' },
+    { id: 'students',     icon: GraduationCap, label: 'Students & Skills' },
+    { id: 'donations',    icon: Heart,         label: 'Donations' },
+    { id: 'finance',      icon: Wallet,        label: 'Finance' },
+    { id: 'volunteers',   icon: Users,         label: 'Volunteers' },
+    { id: 'testimonials', icon: Sparkles,      label: 'Testimonials' },
+    { id: 'carousel',     icon: ImageIcon,     label: 'Carousel' },
+    { id: 'events',       icon: Calendar,      label: 'Events' },
+    { id: 'gallery',      icon: ImageIcon,     label: 'Gallery' },
+    { id: 'audit_logs',   icon: ShieldCheck,   label: 'Audit Logs' },
   ];
 
   const navItems = allNavItems.filter(item => {
     if (adminRole === 'superadmin') return true;
-    if (adminRole === 'finance') return ['analytics', 'donations', 'finance'].includes(item.id);
-    if (adminRole === 'staff') return ['volunteers', 'events', 'gallery', 'carousel'].includes(item.id);
+    if (adminRole === 'finance') return ['analytics', 'students', 'donations', 'finance'].includes(item.id);
+    if (adminRole === 'staff') return ['students', 'volunteers', 'events', 'gallery', 'carousel'].includes(item.id);
     return false;
   });
 
@@ -744,17 +851,37 @@ export default function AdminDashboard() {
   return (
     <>
       <div className={styles.dashboardContainer}>
+        {/* Mobile Backdrop Overlay */}
+        {mobileMenuOpen && (
+          <div 
+            className={styles.mobileBackdrop} 
+            onClick={() => setMobileMenuOpen(false)} 
+          />
+        )}
+
         {/* Sidebar */}
-        <aside className={styles.sidebar}>
+        <aside className={`${styles.sidebar} ${mobileMenuOpen ? styles.sidebarMobileOpen : ''}`}>
           <div className={styles.sidebarHeader}>
-            <img src="/logo.png" alt="JPRD" className={styles.sidebarLogo} />
-            <div><h3>JPRD Panel</h3><span>Admin v2.0</span></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexGrow: 1 }}>
+              <img src="/logo.png" alt="JPRD" className={styles.sidebarLogo} />
+              <div><h3>JPRD Panel</h3><span>Admin v2.0</span></div>
+            </div>
+            <button 
+              className={styles.mobileCloseBtn} 
+              onClick={() => setMobileMenuOpen(false)}
+              aria-label="Close Menu"
+            >
+              <CloseIcon size={22} />
+            </button>
           </div>
           <nav className={styles.sidebarNav}>
             {navItems.map(item => (
               <button key={item.id}
                 className={`${styles.navItem} ${activeTab === item.id ? styles.activeNavItem : ''}`}
-                onClick={() => setActiveTab(item.id)}>
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setMobileMenuOpen(false);
+                }}>
                 <item.icon size={20} /><span>{item.label}</span>
               </button>
             ))}
@@ -767,24 +894,23 @@ export default function AdminDashboard() {
         {/* Main */}
         <main className={styles.mainContent}>
           <header className={styles.topbar}>
-            <h2>{navItems.find(n => n.id === activeTab)?.label} Management</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+              <button 
+                className={styles.mobileMenuToggle} 
+                onClick={() => setMobileMenuOpen(true)}
+                aria-label="Open Navigation"
+              >
+                <Menu size={24} />
+              </button>
+              <h2>{navItems.find(n => n.id === activeTab)?.label} Management</h2>
+            </div>
+            <div className={styles.topbarRight}>
               <div 
-                title={dbService.isCloudConnected() ? "Cloud Database Connected (Multi-browser sync active)" : "Running in Local Storage Mode. Add Firebase keys in .env.local to enable Cloud Sync across all browsers."}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.4rem',
-                  fontSize: '0.8rem',
-                  padding: '0.35rem 0.75rem',
-                  borderRadius: '20px',
-                  background: dbService.isCloudConnected() ? 'rgba(46, 125, 50, 0.1)' : 'rgba(217, 107, 39, 0.1)',
-                  color: dbService.isCloudConnected() ? '#2e7d32' : '#d96b27',
-                  border: dbService.isCloudConnected() ? '1px solid rgba(46, 125, 50, 0.3)' : '1px solid rgba(217, 107, 39, 0.3)'
-                }}
+                className={styles.cloudBadge}
+                title={dbService.isCloudConnected() ? "Cloud Database Connected (Multi-browser sync active)" : "Running in Local Storage Mode."}
               >
                 {dbService.isCloudConnected() ? <Cloud size={14} /> : <CloudOff size={14} />}
-                <span>{dbService.isCloudConnected() ? "Cloud Sync Active" : "Local Mode (Offline)"}</span>
+                <span>{dbService.isCloudConnected() ? "Cloud Active" : "Local Mode"}</span>
               </div>
 
               <div className={styles.userInfo}>
@@ -1158,7 +1284,354 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ══ TESTIMONIALS ══ */}
+          {/* ══ STUDENTS & SKILLS TRAINING ══ */}
+          {activeTab === 'students' && (
+            <div className={styles.tabContent}>
+              {/* Summary KPIs */}
+              <div className={styles.statsGrid}>
+                <div className={styles.statCard}>
+                  <span className={styles.statLabel}>Total Enrolled Students</span>
+                  <span className={styles.statValue}>{students.length}</span>
+                  <div className={styles.statMeta}>
+                    <GraduationCap size={13} style={{ color: '#1d4ed8' }} />
+                    <span>Across 4 Skill Levels</span>
+                  </div>
+                </div>
+                <div className={styles.statCard}>
+                  <span className={styles.statLabel}>Total Fees Collected</span>
+                  <span className={styles.statValue}>&#8377;{studentTotalFeesCollected.toLocaleString()}</span>
+                  <div className={styles.statMeta}>
+                    <CheckCircle size={13} style={{ color: '#16a34a' }} />
+                    <span>{studentPaidCount} Paid Registrations</span>
+                  </div>
+                </div>
+                <div className={styles.statCard}>
+                  <span className={styles.statLabel}>Pending Fee Dues</span>
+                  <span className={styles.statValue}>{studentPendingCount}</span>
+                  <div className={styles.statMeta}>
+                    <Wallet size={13} style={{ color: '#d97706' }} />
+                    <span>Awaiting Payment</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.splitGrid}>
+                {/* Left Col: Registration Form */}
+                <div className={styles.controlCard}>
+                  <h3>Register New Student</h3>
+                  <form onSubmit={handleAddStudent} className={styles.dashboardForm}>
+                    <div className={styles.formGroup}>
+                      <label>Student Full Name *</label>
+                      <input 
+                        type="text" 
+                        value={newStuName} 
+                        onChange={e=>setNewStuName(e.target.value)} 
+                        required 
+                        placeholder="e.g. Rahul Verma" 
+                        className={styles.dashInput}
+                      />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label>Parent / Guardian Name *</label>
+                      <input 
+                        type="text" 
+                        value={newStuParent} 
+                        onChange={e=>setNewStuParent(e.target.value)} 
+                        required 
+                        placeholder="e.g. Mahendra Verma" 
+                        className={styles.dashInput}
+                      />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label>Mobile Number (10 Digits) *</label>
+                      <input 
+                        type="tel" 
+                        value={newStuPhone} 
+                        onChange={e=>setNewStuPhone(e.target.value)} 
+                        required 
+                        placeholder="e.g. 9876543210" 
+                        pattern="[0-9]{10}"
+                        title="Please enter a valid 10-digit mobile number"
+                        className={styles.dashInput}
+                      />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label>Aadhaar Number (12 Digits) *</label>
+                      <input 
+                        type="text" 
+                        value={newStuAadhaar} 
+                        onChange={e=>setNewStuAadhaar(e.target.value.replace(/\s+/g, ''))} 
+                        required 
+                        placeholder="e.g. 123456789012" 
+                        maxLength={12}
+                        className={styles.dashInput}
+                      />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label>Full Address / Village / District *</label>
+                      <input 
+                        type="text" 
+                        value={newStuAddress} 
+                        onChange={e=>setNewStuAddress(e.target.value)} 
+                        required 
+                        placeholder="e.g. Village Bhaisakharag, Mau, UP" 
+                        className={styles.dashInput}
+                      />
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label>Skill Training Level *</label>
+                      <select 
+                        value={newStuLevel} 
+                        onChange={e=>setNewStuLevel(e.target.value)} 
+                        className={styles.dashSelect}
+                      >
+                        {SKILL_LEVELS.map(lvl => (
+                          <option key={lvl} value={lvl}>{lvl}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div className={styles.formGroup}>
+                        <label>Reg. Fee (&#8377;)</label>
+                        <input 
+                          type="number" 
+                          value={newStuFee} 
+                          onChange={e=>setNewStuFee(e.target.value)} 
+                          min="0"
+                          placeholder="500" 
+                          className={styles.dashInput}
+                        />
+                      </div>
+                      <div className={styles.formGroup}>
+                        <label>Payment Status</label>
+                        <select 
+                          value={newStuFeeStatus} 
+                          onChange={e=>setNewStuFeeStatus(e.target.value)} 
+                          className={styles.dashSelect}
+                        >
+                          <option value="Paid">Paid</option>
+                          <option value="Pending">Pending</option>
+                          <option value="Scholarship">Scholarship / Free</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className={styles.formGroup}>
+                      <label>Enrollment Date (Optional / Custom)</label>
+                      <input 
+                        type="date" 
+                        value={newStuDate} 
+                        onChange={e=>setNewStuDate(e.target.value)} 
+                        className={styles.dashInput}
+                      />
+                    </div>
+
+                    <button type="submit" className={styles.addBtn}>
+                      <GraduationCap size={17} /> Enroll Student
+                    </button>
+                  </form>
+                </div>
+
+                {/* Right Col: Student Directory Table */}
+                <div className={styles.tableCard}>
+                  <div className={styles.tableHeader}>
+                    <div>
+                      <h3>Student Directory ({filteredStudents.length})</h3>
+                      <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: '2px' }}>
+                        Manage student profiles, skill progression levels, and fee statuses.
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button 
+                        className={styles.pdfReportBtn} 
+                        title="Generate official printable PDF Student Roster"
+                        onClick={() => generatePrintableReport(
+                          'Student Enrollment & Skill Training Roster',
+                          `Filtered Registry for: ${studentMonth} | Level: ${studentLevelFilter} | Fee Status: ${studentFeeFilter}`,
+                          [
+                            { key: 'name', label: 'Student Name' },
+                            { key: 'parentName', label: 'Parent/Guardian' },
+                            { key: 'phone', label: 'Mobile No' },
+                            { key: 'aadhaar', label: 'Aadhaar No' },
+                            { key: 'address', label: 'Address / Location' },
+                            { key: 'level', label: 'Skill Level' },
+                            { key: 'fee', label: 'Reg Fee', isAmount: true },
+                            { key: 'feeStatus', label: 'Payment Status' },
+                            { key: 'date', label: 'Enrollment Date' }
+                          ],
+                          filteredStudents,
+                          [
+                            { label: 'Total Students in View', value: filteredStudents.length },
+                            { label: 'Paid Fee Students', value: filteredStudents.filter(s=>s.feeStatus==='Paid').length },
+                            { label: 'Pending Fee Students', value: filteredStudents.filter(s=>s.feeStatus==='Pending').length },
+                            { label: 'Total Fees Collected', value: `₹${filteredStudents.filter(s=>s.feeStatus==='Paid').reduce((sum,s)=>sum+(Number(s.fee)||0),0).toLocaleString()}` }
+                          ]
+                        )}
+                      >
+                        <FileText size={15}/> Download PDF Report
+                      </button>
+
+                      {/* Live Search */}
+                      <div className={styles.searchWrapper}>
+                        <Search size={15} className={styles.searchIcon} />
+                        <input 
+                          type="text" 
+                          placeholder="Search name, phone, aadhaar..." 
+                          value={studentSearch} 
+                          onChange={e=>setStudentSearch(e.target.value)} 
+                          className={styles.searchInput}
+                        />
+                      </div>
+
+                      {/* Level Filter */}
+                      <div className={styles.filterGroup}>
+                        <Filter size={15} className={styles.filterIcon} />
+                        <select 
+                          value={studentLevelFilter} 
+                          onChange={e=>setStudentLevelFilter(e.target.value)} 
+                          className={styles.tableSelect}
+                        >
+                          <option value="All">All Skill Levels</option>
+                          {SKILL_LEVELS.map(lvl => (
+                            <option key={lvl} value={lvl}>{lvl}</option>
+                          ))}
+                          <option value="Certified / Completed">Certified / Completed</option>
+                        </select>
+                      </div>
+
+                      {/* Fee Status Filter */}
+                      <div className={styles.filterGroup}>
+                        <Wallet size={15} className={styles.filterIcon} />
+                        <select 
+                          value={studentFeeFilter} 
+                          onChange={e=>setStudentFeeFilter(e.target.value)} 
+                          className={styles.tableSelect}
+                        >
+                          <option value="All">All Fee Statuses</option>
+                          <option value="Paid">Paid</option>
+                          <option value="Pending">Pending</option>
+                          <option value="Scholarship">Scholarship</option>
+                        </select>
+                      </div>
+
+                      <MonthFilter value={studentMonth} onChange={setStudentMonth}/>
+                      {(studentMonth !== 'All Months' || studentLevelFilter !== 'All' || studentFeeFilter !== 'All' || studentSearch) && (
+                        <button 
+                          className={styles.clearFilter} 
+                          onClick={() => {
+                            setStudentMonth('All Months');
+                            setStudentLevelFilter('All');
+                            setStudentFeeFilter('All');
+                            setStudentSearch('');
+                          }}
+                        >
+                          × Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <table className={styles.table}>
+                    <thead>
+                      <tr>
+                        <th>Student & Parents</th>
+                        <th>Contact / Aadhaar</th>
+                        <th>Address</th>
+                        <th>Skill Level & Upgrade</th>
+                        <th>Fee Status</th>
+                        <th>Date</th>
+                        <th>Del</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredStudents.map(s => {
+                        const levelClass = 
+                          s.level.includes('Level 1') ? styles.badgeLevel1 :
+                          s.level.includes('Level 2') ? styles.badgeLevel2 :
+                          s.level.includes('Level 3') ? styles.badgeLevel3 :
+                          styles.badgeLevel4;
+
+                        return (
+                          <tr key={s.id}>
+                            <td>
+                              <div className={styles.tableName}>{s.name}</div>
+                              <div className={styles.tableEmail}>Parent: <strong>{s.parentName || 'N/A'}</strong></div>
+                            </td>
+                            <td>
+                              <div style={{ fontWeight: 600, color: 'var(--color-primary)' }}>{s.phone}</div>
+                              <div style={{ fontSize: '0.78rem', color: '#64748b' }}>Aadhaar: {s.aadhaar ? `•••• •••• ${s.aadhaar.slice(-4)}` : 'N/A'}</div>
+                            </td>
+                            <td>
+                              <div style={{ fontSize: '0.85rem', maxWidth: '180px', color: '#334155' }}>
+                                {s.address}
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-start' }}>
+                                <span className={`${styles.badge} ${levelClass}`}>
+                                  {s.level}
+                                </span>
+                                {s.level !== 'Certified / Completed' && (
+                                  <button 
+                                    className={styles.upgradeBtn}
+                                    title="Promote student to next skill level"
+                                    onClick={() => handlePromoteLevel(s)}
+                                  >
+                                    <Award size={13} /> Promote Level ↑
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            <td>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                                <span 
+                                  className={`${styles.badge} ${s.feeStatus === 'Paid' ? styles.badgePaid : s.feeStatus === 'Pending' ? styles.badgePending : styles.badgeScholarship}`}
+                                  title="Click to toggle Paid / Pending status"
+                                  onClick={() => handleToggleFeeStatus(s)}
+                                >
+                                  {s.feeStatus === 'Paid' ? '✓ Paid' : s.feeStatus === 'Pending' ? '⏳ Pending' : 'Scholarship'}
+                                </span>
+                                <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
+                                  Fee: &#8377;{(s.fee || 0).toLocaleString()}
+                                </span>
+                              </div>
+                            </td>
+                            <td style={{ fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                              {s.date || getMonth(s)}
+                            </td>
+                            <td>
+                              <button 
+                                className={styles.deleteBtn} 
+                                onClick={()=>deleteStudent(s.id)}
+                                title="Remove student record"
+                              >
+                                <Trash2 size={16}/>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {filteredStudents.length === 0 && (
+                        <tr>
+                          <td colSpan="7" style={{ textAlign: 'center', padding: '2.5rem', color: '#94a3b8' }}>
+                            <GraduationCap size={32} style={{ opacity: 0.3, marginBottom: '0.5rem' }} />
+                            <div>No student records found matching this filter criteria.</div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
           {activeTab === 'testimonials' && (
             <div className={styles.tabContent}>
               <div className={styles.splitGrid}>

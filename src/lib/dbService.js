@@ -57,12 +57,9 @@ export const dbService = {
             saveLocal(collectionName, items); // sync locally as backup
             callback(items);
           } else {
-            // First time initialization: seed cloud if empty
-            const localData = getLocal(collectionName, defaultData);
-            if (localData && localData.length > 0) {
-              this.seedInitialData(collectionName, localData);
-            }
-            callback(localData);
+            // Collection is empty: clear local storage cache and notify listeners with empty list
+            saveLocal(collectionName, []);
+            callback([]);
           }
         }, (err) => {
           console.warn(`Firestore listener error on ${collectionName}, using local fallback:`, err);
@@ -174,6 +171,7 @@ export const dbService = {
     await this.clearCollection('expenses');
     await this.clearCollection('employees');
     await this.clearCollection('volunteers');
+    await this.clearCollection('students');
   },
 
   /**
